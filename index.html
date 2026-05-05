@@ -1731,11 +1731,11 @@
         const card = boton.closest(".prod-card");
         const imgEl = card ? card.querySelector("img") : null;
 
-        // 1. Intentar compartir con imagen + texto + URL
+        // 1. Intentar compartir con imagen (con texto+URL superpuestos) + texto
         if (navigator.share && imgEl) {
           try {
             mostrarToast("Preparando imagen…", true);
-            const blob = await imagenABlob(imgEl);
+            const blob = await imagenConTextoABlob(imgEl, nombre, precio);
             if (
               blob &&
               navigator.canShare &&
@@ -1748,7 +1748,7 @@
               });
               await navigator.share({
                 title: `Mir – ${nombre}`,
-                text: texto, // ← ahora incluye la URL dentro del texto
+                text: texto,
                 files: [file],
               });
               ocultarToast();
@@ -1780,36 +1780,71 @@
         }
       }
 
-      function imagenABlob(imgEl) {
+      function imagenConTextoABlob(imgEl, nombre, precio) {
         return new Promise((resolve) => {
-          const canvas = document.createElement("canvas");
-          const w = imgEl.naturalWidth || imgEl.width || 800;
-          const h = imgEl.naturalHeight || imgEl.height || 600;
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          if (imgEl.complete && imgEl.naturalWidth) {
-            try {
-              ctx.drawImage(imgEl, 0, 0, w, h);
-              canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.92);
-            } catch (_) {
-              resolve(null);
-            }
-          } else {
+          const dibujar = (src) => {
             const tmp = new Image();
             tmp.crossOrigin = "anonymous";
             tmp.onload = () => {
-              try {
-                ctx.drawImage(tmp, 0, 0, w, h);
-                canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.92);
-              } catch (_) {
-                resolve(null);
-              }
+              const w = tmp.naturalWidth || 800;
+              const h = tmp.naturalHeight || 600;
+              const canvas = document.createElement("canvas");
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext("2d");
+
+              // Imagen de fondo
+              ctx.drawImage(tmp, 0, 0, w, h);
+
+              // Banda inferior semitransparente
+              const bandH = Math.round(h * 0.22);
+              const grad = ctx.createLinearGradient(0, h - bandH, 0, h);
+              grad.addColorStop(0, "rgba(0,0,0,0)");
+              grad.addColorStop(1, "rgba(0,0,0,0.72)");
+              ctx.fillStyle = grad;
+              ctx.fillRect(0, h - bandH, w, bandH);
+
+              // Escala base para tipografía proporcional al ancho
+              const base = Math.round(w / 18);
+
+              // Nombre del producto
+              ctx.fillStyle = "#ffffff";
+              ctx.font = `bold ${base}px sans-serif`;
+              ctx.textBaseline = "bottom";
+              const nombreY = h - Math.round(bandH * 0.38);
+              ctx.fillText(truncar(ctx, nombre, w - base * 2), base, nombreY);
+
+              // Precio
+              ctx.fillStyle = "#f4a8b8";
+              ctx.font = `${Math.round(base * 0.82)}px sans-serif`;
+              const precioY = h - Math.round(bandH * 0.15);
+              ctx.fillText(
+                `${precio}  •  martinm1500.github.io/mir/`,
+                base,
+                precioY,
+              );
+
+              canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.92);
             };
             tmp.onerror = () => resolve(null);
-            tmp.src = imgEl.src;
+            tmp.src = src;
+          };
+
+          if (imgEl.complete && imgEl.naturalWidth) {
+            dibujar(imgEl.src);
+          } else {
+            imgEl.onload = () => dibujar(imgEl.src);
           }
         });
+      }
+
+      // Corta el texto si no entra en el ancho disponible
+      function truncar(ctx, texto, maxW) {
+        if (ctx.measureText(texto).width <= maxW) return texto;
+        while (texto.length > 1 && ctx.measureText(texto + "…").width > maxW) {
+          texto = texto.slice(0, -1);
+        }
+        return texto + "…";
       }
 
       function slugify(str) {
