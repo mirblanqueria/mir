@@ -794,96 +794,133 @@
         },
       };
 
+      // ─── Calcula las líneas que ocupa un texto en canvas ───
+      function calcularLineas(ctx, texto, maxWidth) {
+        const words = texto.split(" ");
+        const lineas = [];
+        let linea = "";
+        for (let n = 0; n < words.length; n++) {
+          const test = linea + words[n] + " ";
+          if (ctx.measureText(test).width > maxWidth && n > 0) {
+            lineas.push(linea.trim());
+            linea = words[n] + " ";
+          } else {
+            linea = test;
+          }
+        }
+        if (linea.trim()) lineas.push(linea.trim());
+        return lineas;
+      }
+
       // ─── Genera imagen canvas con foto del producto + franja de descripción ───
       async function generarImagenProducto(idProducto) {
         const prod = productos[idProducto];
 
-        // 1. Obtener la imagen ya cargada en el DOM para evitar CORS
+        // 1. Cargar imagen con crossOrigin para poder usarla en canvas
         const imgDOM = document.querySelector(`img[alt="${idProducto}"]`);
-
         const imgEl = new Image();
-        // Si la imagen del DOM ya está cargada, reutilizamos su src directamente.
-        // GitHub Pages sirve imágenes sin CORS restriction cuando se piden desde el mismo origen.
         imgEl.crossOrigin = "anonymous";
-
         await new Promise((resolve, reject) => {
           imgEl.onload = resolve;
           imgEl.onerror = reject;
-          // Forzar recarga limpia con crossOrigin habilitado
           imgEl.src = imgDOM ? imgDOM.src : prod.img;
         });
 
-        // 2. Configurar dimensiones del canvas
         const W = imgEl.naturalWidth || 800;
         const H = imgEl.naturalHeight || 800;
-        const STRIP = Math.round(W * 0.22); // altura de la franja inferior
 
+        // 2. Calcular tamaños de fuente y padding proporcionales al ancho
+        const pad = Math.round(W * 0.05);
+        const fSize1 = Math.round(W * 0.055); // nombre y precio
+        const fSize2 = Math.round(W * 0.042); // subtítulo
+        const lineH1 = Math.round(fSize1 * 1.4);
+        const lineH2 = Math.round(fSize2 * 1.4);
+        const maxTW = W - pad * 2;
+
+        // 3. Pre-calcular líneas en un canvas temporal para medir altura real
+        const tmpCanvas = document.createElement("canvas");
+        tmpCanvas.width = W;
+        tmpCanvas.height = 10;
+        const tmpCtx = tmpCanvas.getContext("2d");
+
+        tmpCtx.font = `bold ${fSize1}px 'DM Sans', sans-serif`;
+        const lineasNombre = calcularLineas(tmpCtx, `🛍️ ${prod.nombre}`, maxTW);
+
+        tmpCtx.font = `bold ${fSize1}px 'DM Sans', sans-serif`;
+        const lineasPrecio = calcularLineas(tmpCtx, prod.precio, maxTW);
+
+        tmpCtx.font = `${fSize2}px 'DM Sans', sans-serif`;
+        const lineasSub = calcularLineas(
+          tmpCtx,
+          "Textiles Mir – Calidad para tu hogar ❤️",
+          maxTW,
+        );
+
+        // Altura real de la franja: padding arriba + todas las líneas + padding abajo
+        const STRIP =
+          pad + // padding top
+          lineasNombre.length * lineH1 + // líneas nombre
+          Math.round(lineH1 * 0.4) + // espacio entre nombre y precio
+          lineasPrecio.length * lineH1 + // líneas precio
+          Math.round(lineH2 * 0.5) + // espacio entre precio y subtítulo
+          lineasSub.length * lineH2 + // líneas subtítulo
+          pad; // padding bottom
+
+        // 4. Crear canvas definitivo con altura exacta
         const canvas = document.createElement("canvas");
         canvas.width = W;
         canvas.height = H + STRIP;
         const ctx = canvas.getContext("2d");
 
-        // 3. Dibujar imagen del producto
+        // 5. Dibujar imagen
         ctx.drawImage(imgEl, 0, 0, W, H);
 
-        // 4. Franja blanca con descripción
+        // 6. Franja blanca
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, H, W, STRIP);
 
-        // Línea decorativa rosa arriba de la franja
+        // Línea decorativa rosa
         ctx.fillStyle = "#E8748A";
-        ctx.fillRect(0, H, W, 4);
+        ctx.fillRect(0, H, W, 5);
 
-        const pad = Math.round(W * 0.04);
-        const fSize1 = Math.round(W * 0.052); // nombre + precio
-        const fSize2 = Math.round(W * 0.038); // subtítulo
-        const lineH = Math.round(fSize1 * 1.35);
+        // 7. Dibujar textos con posición Y acumulada
+        let curY = H + pad;
 
-        // Nombre + precio
+        // Nombre
         ctx.fillStyle = "#1a1a1a";
         ctx.font = `bold ${fSize1}px 'DM Sans', sans-serif`;
-        const textoNombre = `🛍️ ${prod.nombre}`;
-        wrapText(ctx, textoNombre, pad, H + pad + fSize1, W - pad * 2, lineH);
+        for (const linea of lineasNombre) {
+          curY += lineH1;
+          ctx.fillText(linea, pad, curY);
+        }
 
-        // Precio en rosa
+        curY += Math.round(lineH1 * 0.4);
+
+        // Precio
         ctx.fillStyle = "#E8748A";
         ctx.font = `bold ${fSize1}px 'DM Sans', sans-serif`;
-        ctx.fillText(prod.precio, pad, H + pad + fSize1 * 2.5);
+        for (const linea of lineasPrecio) {
+          curY += lineH1;
+          ctx.fillText(linea, pad, curY);
+        }
+
+        curY += Math.round(lineH2 * 0.5);
 
         // Subtítulo
-        ctx.fillStyle = "#555555";
+        ctx.fillStyle = "#777777";
         ctx.font = `${fSize2}px 'DM Sans', sans-serif`;
-        ctx.fillText(
-          "Textiles Mir – Calidad para tu hogar ❤️",
-          pad,
-          H + pad + fSize1 * 2.5 + lineH,
-        );
+        for (const linea of lineasSub) {
+          curY += lineH2;
+          ctx.fillText(linea, pad, curY);
+        }
 
-        // 5. Convertir a Blob/File
+        // 8. Convertir a Blob/File
         const blob = await new Promise((res) =>
           canvas.toBlob(res, "image/jpeg", 0.92),
         );
         return new File([blob], `mir-${idProducto}.jpg`, {
           type: "image/jpeg",
         });
-      }
-
-      // Función auxiliar para texto multilínea en canvas
-      function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-        const words = text.split(" ");
-        let line = "";
-        for (let n = 0; n < words.length; n++) {
-          const testLine = line + words[n] + " ";
-          const metrics = ctx.measureText(testLine);
-          if (metrics.width > maxWidth && n > 0) {
-            ctx.fillText(line, x, y);
-            line = words[n] + " ";
-            y += lineHeight;
-          } else {
-            line = testLine;
-          }
-        }
-        ctx.fillText(line, x, y);
       }
 
       // ─── Función principal de compartir ───
