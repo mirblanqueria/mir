@@ -1056,7 +1056,6 @@
           imgEl.src = imgDOM ? imgDOM.src : prod.img;
         });
 
-        // Canvas fijo 1000x1000 (ratio 1:1) → WhatsApp nunca recorta la preview
         const SIZE = 1000;
         const W = SIZE;
 
@@ -1067,7 +1066,6 @@
         const lineH2 = Math.round(fSize2 * 1.4);
         const maxTW = W - pad * 2;
 
-        // Pre-calcular líneas para medir la franja necesaria
         const tmpCanvas = document.createElement("canvas");
         tmpCanvas.width = W;
         tmpCanvas.height = 10;
@@ -1093,7 +1091,6 @@
           lineasSub.length * lineH2 +
           pad;
 
-        // La foto ocupa el espacio restante dentro del cuadrado 1000x1000
         const H = SIZE - STRIP;
 
         const canvas = document.createElement("canvas");
@@ -1101,11 +1098,9 @@
         canvas.height = SIZE;
         const ctx = canvas.getContext("2d");
 
-        // Fondo blanco total
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, SIZE, SIZE);
 
-        // Imagen con contain (entra completa, sin recortar)
         const srcW = imgEl.naturalWidth;
         const srcH = imgEl.naturalHeight;
         const scale = Math.min(W / srcW, H / srcH);
@@ -1115,15 +1110,12 @@
         const offsetY = (H - drawH) / 2;
         ctx.drawImage(imgEl, offsetX, offsetY, drawW, drawH);
 
-        // Franja blanca
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, H, W, STRIP);
 
-        // Línea decorativa rosa
         ctx.fillStyle = "#E8748A";
         ctx.fillRect(0, H, W, 5);
 
-        // Textos con posición Y acumulada
         let curY = H + pad;
 
         ctx.fillStyle = "#1a1a1a";
@@ -1171,15 +1163,27 @@
         const textoOriginal = boton.innerHTML;
         boton.innerHTML = boton.innerHTML.replace("Compartir", "...");
 
+        // Copiar el texto al portapapeles SIEMPRE, en paralelo con la imagen
+        let textoCopiadoOk = false;
+        try {
+          await navigator.clipboard.writeText(textoPlano);
+          textoCopiadoOk = true;
+        } catch (_) {}
+
         try {
           if (navigator.canShare) {
             try {
               const archivo = await generarImagenProducto(idProducto);
               if (navigator.canShare({ files: [archivo] })) {
+                // Mostrar toast ANTES de abrir el share para que el usuario lo vea
+                if (textoCopiadoOk) {
+                  mostrarToast(
+                    "📋 Texto copiado — pegalo en el mensaje de WhatsApp",
+                  );
+                }
                 await navigator.share({
                   files: [archivo],
                   title: `Mir – ${prod.nombre}`,
-                  text: textoPlano,
                 });
                 return;
               }
@@ -1205,10 +1209,10 @@
             }
           }
 
-          try {
-            await navigator.clipboard.writeText(textoPlano);
-            mostrarToast("¡Enlace copiado al portapapeles!");
-          } catch (_) {
+          // Fallback: solo portapapeles
+          if (textoCopiadoOk) {
+            mostrarToast("¡Texto copiado al portapapeles!");
+          } else {
             mostrarToast("No se pudo compartir. Intenta manualmente.");
           }
         } finally {
