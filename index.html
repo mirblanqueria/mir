@@ -15,7 +15,7 @@
     />
     <meta
       property="og:image"
-      content="https://mirblanqueria.github.io/mir/img/brand.jpeg"
+      content="https://mirblanqueriagithub.io/mir/img/brand.jpeg"
     />
     <meta property="og:image:width" content="800" />
     <meta property="og:image:height" content="800" />
@@ -944,12 +944,7 @@
               <button
                 class="btn-card-share"
                 onclick="
-                  compartir(
-                    'Juego de Toallas 3 Piezas',
-                    '$20.000',
-                    'img/juego-toallas.png',
-                    this,
-                  )
+                  compartir('Juego de Toallas 3 Piezas', '$20.000', this)
                 "
               >
                 <svg
@@ -1004,12 +999,7 @@
               <button
                 class="btn-card-share"
                 onclick="
-                  compartir(
-                    'Cortinas Tropical 135x200',
-                    '$21.500',
-                    'img/cortinas-tropical.png',
-                    this,
-                  )
+                  compartir('Cortinas Tropical 135x200', '$21.500', this)
                 "
               >
                 <svg
@@ -1066,12 +1056,7 @@
               <button
                 class="btn-card-share"
                 onclick="
-                  compartir(
-                    'Cortinas Blackout Linea Summer',
-                    '$35.000',
-                    'img/cortinas-blackout.png',
-                    this,
-                  )
+                  compartir('Cortinas Blackout Linea Summer', '$35.000', this)
                 "
               >
                 <svg
@@ -1129,7 +1114,6 @@
                   compartir(
                     'Cortinas de Baño Poliester 180x180',
                     '$10.000',
-                    'img/cortina-baño-poliester.png',
                     this,
                   )
                 "
@@ -1188,12 +1172,7 @@
               <button
                 class="btn-card-share"
                 onclick="
-                  compartir(
-                    'Cortinas de Baño Teflón 180x180',
-                    '$12.500',
-                    'img/cortinas-baño.png',
-                    this,
-                  )
+                  compartir('Cortinas de Baño Teflón 180x180', '$12.500', this)
                 "
               >
                 <svg
@@ -1253,7 +1232,6 @@
                   compartir(
                     'Sábanas 2 plazas y media 200 hilos',
                     '$27.000',
-                    'img/sabanas-2-plazasymedia.png',
                     this,
                   )
                 "
@@ -1312,12 +1290,7 @@
               <button
                 class="btn-card-share"
                 onclick="
-                  compartir(
-                    'Manteles Ecocuero 2 metros',
-                    '$12.000',
-                    'img/manteles-ecocuero.png',
-                    this,
-                  )
+                  compartir('Manteles Ecocuero 2 metros', '$12.000', this)
                 "
               >
                 <svg
@@ -1371,14 +1344,7 @@
               </a>
               <button
                 class="btn-card-share"
-                onclick="
-                  compartir(
-                    'Alfombra de Baño',
-                    '$10.000',
-                    'img/alfombra-baño.png',
-                    this,
-                  )
-                "
+                onclick="compartir('Alfombra de Baño', '$10.000', this)"
               >
                 <svg
                   width="14"
@@ -1437,7 +1403,6 @@
                   compartir(
                     'Sábanas Diseño Americano 4800 hilos',
                     '$35.000',
-                    'img/sabanas-diseño-americano.png',
                     this,
                   )
                 "
@@ -1499,7 +1464,6 @@
                   compartir(
                     'Cortinas de ambiente 2 paños 2,00x2,30m',
                     '$9.000',
-                    'img/cortina-ambiente.png',
                     this,
                   )
                 "
@@ -1555,14 +1519,7 @@
               </a>
               <button
                 class="btn-card-share"
-                onclick="
-                  compartir(
-                    'Repasador de corazones',
-                    '$2.000',
-                    'img/repasador-corazon.png',
-                    this,
-                  )
-                "
+                onclick="compartir('Repasador de corazones', '$2.000', this)"
               >
                 <svg
                   width="14"
@@ -1615,14 +1572,7 @@
               </a>
               <button
                 class="btn-card-share"
-                onclick="
-                  compartir(
-                    'Repasador con fleco',
-                    '$1.500',
-                    'img/repasador-fleco.png',
-                    this,
-                  )
-                "
+                onclick="compartir('Repasador con fleco', '$1.500', this)"
               >
                 <svg
                   width="14"
@@ -1681,7 +1631,6 @@
                   compartir(
                     'Sábanas ajustables 140x200 2 Plazas',
                     '$10.000',
-                    'img/sabanas-ajustables.png',
                     this,
                   )
                 "
@@ -1776,80 +1725,58 @@
     <script>
       const SITE_URL = "https://mirblanqueria.github.io/mir/";
 
-      async function compartir(nombre, precio, imgSrc, boton) {
-        // Crear URL con parámetros dinámicos para vista previa en WhatsApp
-        const params = new URLSearchParams({
-          producto: nombre,
-          precio: precio,
-          img: imgSrc,
-        });
-        const shareUrl = `${SITE_URL}?${params.toString()}`;
+      async function compartir(nombre, precio, boton) {
+        const url = SITE_URL;
+        const texto = `🛍️ *${nombre}*\n💰 Precio: *${precio}*\n\n✨ Textiles Mir – Calidad para tu hogar ♥\n🔗 ${url}`;
 
-        // Texto para compartir que incluye los detalles
-        const texto = `🛍️ *${nombre}* – ${precio}\nTextiles Mir – Calidad para tu hogar ♥\n${shareUrl}`;
+        // Buscar la imagen del producto en el mismo article
+        const article = boton.closest("article");
+        const imgEl = article ? article.querySelector("img") : null;
 
-        // Intentar usar Web Share API (móviles)
+        // Intentar compartir CON imagen (Web Share API nivel 2)
+        if (navigator.share && imgEl) {
+          try {
+            const response = await fetch(imgEl.src);
+            const blob = await response.blob();
+            const ext = blob.type.includes("png") ? "png" : "jpg";
+            const file = new File([blob], `${nombre}.${ext}`, {
+              type: blob.type,
+            });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                title: `Mir – ${nombre}`,
+                text: texto,
+                files: [file],
+              });
+              return;
+            }
+          } catch (err) {
+            if (err.name === "AbortError") return;
+            // Si falla el fetch o share con archivo, caer al siguiente fallback
+          }
+        }
+
+        // Fallback: share sin imagen (solo texto + link)
         if (navigator.share) {
           try {
             await navigator.share({
               title: `Mir – ${nombre}`,
               text: texto,
-              url: shareUrl,
             });
             return;
           } catch (err) {
             if (err.name === "AbortError") return;
-            // Si falla, continuar con fallback
           }
         }
 
-        // Fallback: copiar al portapapeles
+        // Último fallback: copiar al portapapeles
         try {
           await navigator.clipboard.writeText(texto);
-          mostrarToast("¡Enlace copiado al portapapeles!");
+          mostrarToast("¡Texto copiado al portapapeles!");
         } catch (_) {
-          mostrarToast("No se pudo compartir. Intenta manualmente.");
+          mostrarToast("No se pudo copiar. Compartí el link manualmente.");
         }
-      }
-
-      // Actualizar meta tags dinámicamente cuando se carga con parámetros
-      function actualizarMetaTags() {
-        const params = new URLSearchParams(window.location.search);
-        const producto = params.get("producto");
-        const precio = params.get("precio");
-        const img = params.get("img");
-
-        if (producto && img) {
-          const titulo = `Mir – ${producto}`;
-          const descripcion = `${producto} – ${precio || "Consulta precio"}. Textiles Mir, calidad para tu hogar.`;
-          const imagenUrl = img.startsWith("http")
-            ? img
-            : `${SITE_URL}${img.replace(/^\//, "")}`;
-
-          // Actualizar title
-          document.title = titulo;
-
-          // Actualizar Open Graph meta tags
-          actualizarMeta("og:title", titulo);
-          actualizarMeta("og:description", descripcion);
-          actualizarMeta("og:image", imagenUrl);
-          actualizarMeta("og:url", window.location.href);
-
-          // Actualizar Twitter Card
-          actualizarMeta("twitter:title", titulo);
-          actualizarMeta("twitter:description", descripcion);
-          actualizarMeta("twitter:image", imagenUrl);
-        }
-      }
-
-      function actualizarMeta(property, content) {
-        let meta = document.querySelector(`meta[property="${property}"]`);
-        if (!meta) {
-          meta = document.createElement("meta");
-          meta.setAttribute("property", property);
-          document.head.appendChild(meta);
-        }
-        meta.setAttribute("content", content);
       }
 
       function mostrarToast(msg, persistente = false) {
@@ -1863,9 +1790,6 @@
       function ocultarToast() {
         document.getElementById("toast").classList.remove("show");
       }
-
-      // Ejecutar al cargar la página
-      document.addEventListener("DOMContentLoaded", actualizarMetaTags);
     </script>
   </body>
 </html>
