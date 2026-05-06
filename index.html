@@ -826,18 +826,19 @@
           imgEl.src = imgDOM ? imgDOM.src : prod.img;
         });
 
-        const W = imgEl.naturalWidth || 800;
-        const H = imgEl.naturalHeight || 800;
+        // Canvas fijo 1000x1000 (ratio 1:1) → WhatsApp nunca recorta la preview
+        const SIZE = 1000;
+        const W = SIZE;
 
-        // 2. Calcular tamaños de fuente y padding proporcionales al ancho
+        // 2. Calcular tamaños de fuente y padding
         const pad = Math.round(W * 0.05);
-        const fSize1 = Math.round(W * 0.055); // nombre y precio
-        const fSize2 = Math.round(W * 0.042); // subtítulo
+        const fSize1 = Math.round(W * 0.055);
+        const fSize2 = Math.round(W * 0.042);
         const lineH1 = Math.round(fSize1 * 1.4);
         const lineH2 = Math.round(fSize2 * 1.4);
         const maxTW = W - pad * 2;
 
-        // 3. Pre-calcular líneas en un canvas temporal para medir altura real
+        // 3. Pre-calcular líneas para medir la franja necesaria
         const tmpCanvas = document.createElement("canvas");
         tmpCanvas.width = W;
         tmpCanvas.height = 10;
@@ -856,26 +857,45 @@
           maxTW,
         );
 
-        // Altura real de la franja: padding arriba + todas las líneas + padding abajo
         const STRIP =
-          pad + // padding top
-          lineasNombre.length * lineH1 + // líneas nombre
-          Math.round(lineH1 * 0.4) + // espacio entre nombre y precio
-          lineasPrecio.length * lineH1 + // líneas precio
-          Math.round(lineH2 * 0.5) + // espacio entre precio y subtítulo
-          lineasSub.length * lineH2 + // líneas subtítulo
-          pad; // padding bottom
+          pad +
+          lineasNombre.length * lineH1 +
+          Math.round(lineH1 * 0.4) +
+          lineasPrecio.length * lineH1 +
+          Math.round(lineH2 * 0.5) +
+          lineasSub.length * lineH2 +
+          pad;
 
-        // 4. Crear canvas definitivo con altura exacta
+        // La foto ocupa el espacio restante dentro del cuadrado 1000x1000
+        const H = SIZE - STRIP;
+
+        // 4. Canvas definitivo 1:1
         const canvas = document.createElement("canvas");
-        canvas.width = W;
-        canvas.height = H + STRIP;
+        canvas.width = SIZE;
+        canvas.height = SIZE;
         const ctx = canvas.getContext("2d");
 
-        // 5. Dibujar imagen
-        ctx.drawImage(imgEl, 0, 0, W, H);
+        // 5. Fondo blanco total
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, SIZE, SIZE);
 
-        // 6. Franja blanca
+        // 6. Dibujar imagen escalada para llenar el área de foto (cover)
+        const srcW = imgEl.naturalWidth;
+        const srcH = imgEl.naturalHeight;
+        const scale = Math.max(W / srcW, H / srcH);
+        const drawW = srcW * scale;
+        const drawH = srcH * scale;
+        const offsetX = (W - drawW) / 2;
+        const offsetY = (H - drawH) / 2;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, W, H);
+        ctx.clip();
+        ctx.drawImage(imgEl, offsetX, offsetY, drawW, drawH);
+        ctx.restore();
+
+        // 7. Franja blanca
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, H, W, STRIP);
 
