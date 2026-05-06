@@ -882,18 +882,14 @@
         // 6. Dibujar imagen escalada para llenar el área de foto (cover)
         const srcW = imgEl.naturalWidth;
         const srcH = imgEl.naturalHeight;
-        const scale = Math.max(W / srcW, H / srcH);
+        const scale = Math.min(W / srcW, H / srcH); // contain: imagen entera, sin recortar
         const drawW = srcW * scale;
         const drawH = srcH * scale;
         const offsetX = (W - drawW) / 2;
         const offsetY = (H - drawH) / 2;
 
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(0, 0, W, H);
-        ctx.clip();
+        // Sin clip: la imagen entra completa dentro del área de foto
         ctx.drawImage(imgEl, offsetX, offsetY, drawW, drawH);
-        ctx.restore();
 
         // 7. Franja blanca
         ctx.fillStyle = "#ffffff";
